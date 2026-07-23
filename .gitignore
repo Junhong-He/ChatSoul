@@ -28,6 +28,11 @@ build/
 build_stage/
 *.spec
 
+# 不公开发布的角色（私人/潜在侵权，本地保留但禁止入库）
+skills/科研导师.md
+skills/珂莱塔.md
+skills/珂莱塔.jpg
+
 # 操作系统文件
 Thumbs.db
 .DS_Store
