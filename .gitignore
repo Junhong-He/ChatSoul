@@ -1,0 +1,32 @@
+# 虚拟环境（体积大，不入库）
+.venv/
+
+# 模型权重与原始 GGUF（GB 级，本地使用）
+models/
+*.gguf
+OllamaSetup.exe
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 项目记忆/工作区数据（含本地偏好，不入库）
+.workbuddy/
+
+# 临时文件
+_*.json
+_*.html
+_*.py
+
+# 运行时数据（对话记忆是私人数据，不入库）
+data/
+
+# 打包产物
+dist/
+build/
+*.spec
+
+# 操作系统文件
+Thumbs.db
+.DS_Store

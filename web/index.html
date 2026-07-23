@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatSoul</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v=5" />
+
+  <!-- 内联诊断脚本：在所有外部资源之前执行 -->
+  <script>
+    // 立即标记 JS 已开始解析
+    window.__JS_STARTED = true;
+    console.log("[诊断] <head> 内联脚本已执行，时间:", new Date().toLocaleTimeString());
+
+    // 全局错误捕获
+    window.addEventListener("error", function(ev) {
+      var el = document.getElementById("diag-error");
+      if (el) { el.textContent = "JS 报错: " + (ev.message || String(ev.error)); el.style.display = "block"; }
+      console.error("[诊断] JS 运行时错误:", ev.error);
+    });
+    window.addEventListener("unhandledrejection", function(ev) {
+      var el = document.getElementById("diag-error");
+      if (el) { el.textContent = "异步错误: " + String(ev.reason); el.style.display = "block"; }
+    });
+  </script>
+
+  <style>
+    /* 诊断元素（默认隐藏） */
+    #diag-banner, #diag-error { display:none !important; }
+    /* 调试浮窗（默认隐藏，需要时在 Console 手动显示） */
+    #diag-log {
+      display:none !important;
+      position:fixed; bottom:70px; right:16px; z-index:99998;
+      background:#4E3D35; color:#FAF7F2; padding:10px 14px;
+      border-radius:12px; font-size:12px; max-width:380px;
+      word-break:break-all; box-shadow:0 6px 20px rgba(0,0,0,.25);
+      font-family:monospace; line-height:1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ⚠️ 诊断横幅：如果 JS 正常执行，这会被隐藏 -->
+  <div id="diag-banner">⚠️ JavaScript 似乎未正常加载 — 请按 F12 打开开发者工具查看 Console 错误信息</div>
+  <div id="diag-error"></div>
+  <div id="diag-log">等待初始化…</div>
+
+  <div id="app">
+    <!-- 侧边栏 -->
+    <aside id="sidebar">
+      <div class="brand"><div><div class="brand-title">ChatSoul</div><div class="brand-sub">本地 Qwen2.5 · Skill 版</div></div></div>
+      <div class="section-title">角色库</div>
+      <ul id="skill-list" class="skill-list"></ul>
+      <div class="status" id="status">连接状态：检测中…</div>
+      <div class="hint">skill 文件兼容 mobileLLM / AI Edge Gallery 的 SKILL.md 格式。</div>
+    </aside>
+
+    <!-- 主聊天区 -->
+    <main id="chat-panel">
+      <header id="chat-header">
+        <label class="avatar-upload-label header-avatar" title="点击上传角色头像">
+          <img class="char-avatar" id="char-avatar" src="" alt="" onerror="this.style.display='none'" />
+          <span class="avatar-placeholder" id="header-avatar-placeholder">上传头像</span>
+          <input type="file" id="header-avatar-input" accept=".png,.jpg,.jpeg,.webp,.gif" hidden />
+        </label>
+        <div class="char-meta">
+          <div class="char-name" id="char-name">未激活角色 · 普通对话</div>
+          <div class="char-desc" id="char-desc">点左侧角色或下方「＋」导入并激活一个 skill</div>
+        </div>
+        <button id="btn-clear" class="btn ghost small">清空对话</button>
+      </header>
+
+      <div id="messages" class="messages">
+        <div class="empty-hint" id="empty-hint">
+          选择一个角色，或点输入框左侧 <b>「＋」</b> 导入 skill 文件。<br/>
+          所有回复由本机 Ollama + Qwen2.5:3B 生成。
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="active-skill hidden" id="active-skill">
+          <label class="avatar-upload-label" title="点击上传角色头像">
+            <img class="active-avatar" id="active-avatar" src="" alt="" onerror="this.style.display='none'" />
+            <span class="avatar-placeholder" id="active-avatar-placeholder">上传头像</span>
+            <input type="file" id="active-avatar-input" accept=".png,.jpg,.jpeg,.webp,.gif" hidden />
+          </label>
+          <span id="active-skill-name">角色</span>
+          <button id="btn-deactivate" title="取消激活">×</button>
+        </div>
+        <div class="composer-row">
+          <div class="plus-wrap">
+            <button id="btn-plus" class="btn icon toggle-btn" title="打开 / 关闭角色菜单">＋</button>
+            <div id="skill-menu" class="skill-menu hidden">
+              <div class="menu-title">选择或导入角色</div>
+              <ul id="menu-skill-list"></ul>
+              <label class="menu-import">
+                <span>导入 skill 文件（.skill / .md）</span>
+                <input type="file" id="file-input" accept=".skill,.md,.markdown,.yaml" hidden />
+                <input type="file" id="avatar-input" accept=".png,.jpg,.jpeg,.webp,.gif" hidden />
+              </label>
+              <button id="btn-new" class="menu-item">新建角色 skill</button>
+            </div>
+          </div>
+          <textarea id="input" placeholder="说点什么吧…（Enter 发送，Shift+Enter 换行）" rows="1"></textarea>
+          <button id="btn-send" class="btn primary">发送</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 弹窗 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>新建角色 skill</h2>
+        <button id="btn-close-modal" class="btn ghost small">×</button>
+      </div>
+      <div class="modal-body">
+        <label>角色名<input id="f-name" placeholder="如：小喵、墨尘先生、老K" /></label>
+        <label>头像
+          <div class="avatar-upload-row">
+            <img id="f-avatar-preview" class="avatar-preview" src="" alt="" onerror="this.style.display='none'" />
+            <span class="avatar-placeholder" id="f-avatar-placeholder">点击下方按钮上传头像</span>
+            <input type="file" id="f-avatar-input" accept=".png,.jpg,.jpeg,.webp,.gif" hidden />
+            <button type="button" class="btn ghost small" onclick="document.getElementById('f-avatar-input').click()">选择图片</button>
+          </div>
+        </label>
+        <label>简介<input id="f-desc" placeholder="一句话描述" /></label>
+        <label>角色设定 / 系统提示词<textarea id="f-prompt" rows="4" placeholder="描述角色性格、说话方式…"></textarea></label>
+        <label>语气风格（每行一条）<textarea id="f-style" rows="3"></textarea></label>
+        <label>避免事项<textarea id="f-forbidden" rows="2"></textarea></label>
+        <label>示例对话<textarea id="f-examples" rows="4" placeholder="user: 你好&#10;小喵：你好呀！"></textarea></label>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-use-only" class="btn ghost">仅使用</button>
+        <button id="btn-save-use" class="btn primary">保存并使用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== 主应用 JS（内联 + 外部双保险）====== -->
+  <script>
+    // ---- 第一步：立即隐藏诊断横幅（证明 JS 能执行到这里）----
+    (function() {
+      var banner = document.getElementById("diag-banner");
+      if (banner) { banner.style.display = "none"; }
+      log("✅ 内联 JS 已执行，诊断横幅已隐藏");
+    })();
+
+    function log(msg) {
+      console.log("[暖伴]", msg);
+      var el = document.getElementById("diag-log");
+      if (el) el.textContent = msg + "\n" + el.textContent;
+    }
+
+    // ---- 工具函数 ----
+    var $ = function(sel) { return document.querySelector(sel); };
+    var AVATAR_BASE = "/api/skills";
+    var state = { skills:[], current:null, history:[], pendingAvatar:null };
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(c) {
+        return ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c];
+      });
+    }
+    function avatarUrl(id) { return AVATAR_BASE + "/" + id + "/avatar"; }
+    function avatarImg(id, sz) {
+      var s = sz || 34;
+      return '<img class="ava-img" src="'+avatarUrl(id)+'" alt="" style="width:'+s+'px;height:'+s+'px" onerror="this.style.display=\'none\'" />';
+    }
+    function isActive(id) { return typeof state.current === "string" && state.current === id; }
+    function autoGrow(el) { if(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,140)+"px";} }
+
+    // ---- API 调用 ----
+    async function loadSkills() {
+      log("正在加载角色列表…");
+      var resp = await fetch("/api/skills");
+      if (!resp.ok) throw new Error("/api/skills 返回 " + resp.status);
+      state.skills = await resp.json();
+      log("✅ 角色列表已加载 (" + state.skills.length + " 个)");
+      renderSkillList();
+      renderMenuList();
+    }
+
+    async function loadHealth() {
+      log("正在检查 Ollama 连接…");
+      var resp = await fetch("/api/health");
+      if (!resp.ok) throw new Error("/api/health 返回 " + resp.status);
+      var h = await resp.json();
+      var el = $("#status");
+      if (!el) return;
+      if (h.mock) { el.className = "status warn"; el.textContent = "演示模式 · " + h.model; }
+      else if (h.ollama && h.available) { el.className = "status ok"; el.textContent = "已连接 Ollama · " + h.model + " 就绪"; }
+      else if (h.ollama && !h.available) { el.className = "status warn"; el.textContent = "Ollama 在线但未拉取 " + h.model; }
+      else { el.className = "status err"; el.textContent = "未检测到 Ollama" + (h.error ? ": " + h.error : ""); }
+      log("✅ 健康检查完成: " + el.textContent);
+    }
+
+    // ---- 渲染 ----
+    function renderSkillList() {
+      var ul = $("#skill-list"); if (!ul) return;
+      ul.innerHTML = "";
+      state.skills.forEach(function(s) {
+        var li = document.createElement("li");
+        li.className = "skill-item" + (isActive(s.id) ? " active" : "");
+        li.dataset.id = s.id;
+        li.innerHTML = (s.has_avatar ? avatarImg(s.id,34) : '') +
+          '<span class="meta"><span class="nm">'+escapeHtml(s.name)+'</span>' +
+          '<span class="ds">'+escapeHtml(s.description||"")+'</span></span>' +
+          '<button class="del-btn" title="删除角色">删除</button>';
+        li.onclick = function() { activateSkill(s.id); closeMenu(); };
+        var db = li.querySelector('.del-btn');
+        if(db) db.onclick = function(e){ e.stopPropagation(); deleteSkill(s.id, s.name); };
+        ul.appendChild(li);
+      });
+    }
+
+    function renderMenuList() {
+      var ul = $("#menu-skill-list"); if (!ul) return;
+      ul.innerHTML = "";
+      if (state.skills.length === 0) {
+        ul.innerHTML = '<li class="mi" style="color:var(--brown-soft);cursor:default">（暂无角色）</li>';
+        return;
+      }
+      state.skills.forEach(function(s) {
+        var li = document.createElement("li");
+        li.className = "mi" + (isActive(s.id) ? " active" : "");
+        li.innerHTML = (s.has_avatar ? '<img class="menu-ava" src="'+avatarUrl(s.id)+'" onerror="this.style.display=\'none\'" />' : '')
+          + '<span>'+escapeHtml(s.name)+'</span>';
+        li.onclick = function() { activateSkill(s.id); closeMenu(); };
+        ul.appendChild(li);
+      });
+    }
+
+    // ---- 角色激活 ----
+    function updateHeaderAvatar(id) {
+      var img=$("#char-avatar"); if(!img)return;
+      var ph=$("#header-avatar-placeholder");
+      if(!id){img.src="";img.style.display="none";if(ph){ph.style.display="";ph.textContent="上传头像";}return;}
+      img.src=avatarUrl(id);img.style.display="";
+      img.onerror=function(){this.style.display="none";if(ph){ph.style.display="";ph.textContent="上传头像";}};
+      if(ph)ph.style.display="none";
+    }
+    function updateActiveAvatar(id) {
+      var img=$("#active-avatar"); if(!img)return;
+      var ph=$("#active-avatar-placeholder");
+      if(!id){img.src="";img.style.display="none";if(ph){ph.style.display="";ph.textContent="头像";}return;}
+      img.src=avatarUrl(id);img.style.display="";
+      img.onerror=function(){this.style.display="none";if(ph){ph.style.display="";ph.textContent="头像";}};
+      if(ph)ph.style.display="none";
+    }
+
+    // ---- 聊天界面头像上传 ----
+    async function uploadActiveAvatar(file) {
+      if(!state.current || !file) return;
+      var ok = await uploadAvatar(state.current, file);
+      if(ok){ updateHeaderAvatar(state.current); updateActiveAvatar(state.current); loadSkills(); }
+    }
+
+    async function activateSkill(id) {
+      var s = null;
+      for(var i=0;i<state.skills.length;i++){if(state.skills[i].id===id){s=state.skills[i];break;}}
+      if(!s)return;
+      // 切换前先保存上一个角色的对话记忆
+      if(state.current && state.current!==id && typeof state.current==="string") await saveHistory(state.current);
+      state.current=id;
+      $("#char-name").textContent=s.name;
+      $("#char-desc").textContent=s.description||"已激活";
+      updateHeaderAvatar(id); updateActiveAvatar(id);
+      var as=$("#active-skill");
+      if(as){as.classList.remove("hidden");$("#active-skill-name").textContent=s.name;}
+      await loadHistory(id);
+      try{localStorage.setItem("chatsoul_last", id);}catch(e){}
+      renderSkillList(); renderMenuList();
+      log("已激活: "+s.name);
+    }
+
+    function deactivate() {
+      if(state.current && typeof state.current==="string") saveHistory(state.current);
+      state.current=null; state.history=[];
+      try{localStorage.removeItem("chatsoul_last");}catch(e){}
+      $("#char-name").textContent="未激活角色 · 普通对话";
+      $("#char-desc").textContent="点左侧角色或下方「＋」导入";
+      updateHeaderAvatar(null); updateActiveAvatar(null);
+      var as=$("#active-skill"); if(as) as.classList.add("hidden");
+      clearMessages(); renderSkillList(); renderMenuList();
+    }
+
+    async function deleteSkill(id, name) {
+      if(!confirm('确定要删除角色「'+(name||id)+'」吗？\n该角色的设定文件和头像都会被删除，且不可撤销。')) return;
+      try {
+        var r = await fetch('/api/skills/'+encodeURIComponent(id), {method:'DELETE'});
+        if(r.ok){
+          log('已删除: '+(name||id));
+          if(state.current===id) deactivate();
+          await loadSkills();
+        } else {
+          var err = await r.json().catch(function(){return {error:'删除失败'};});
+          alert('删除失败：'+(err.error||r.status));
+        }
+      } catch(e){
+        alert('删除出错：'+e.message);
+      }
+    }
+
+    // ---- [+] 菜单 ----
+    var menuOpen = false;
+    function openMenu() {
+      var m=$("#skill-menu"), b=$("#btn-plus");
+      if(m) m.classList.remove("hidden");
+      if(b) b.classList.add("open");
+      menuOpen=true; log("菜单已打开");
+    }
+    function closeMenu() {
+      var m=$("#skill-menu"), b=$("#btn-plus");
+      if(m) m.classList.add("hidden");
+      if(b) b.classList.remove("open");
+      menuOpen=false;
+    }
+    function toggleMenu() { if(menuOpen)closeMenu();else openMenu(); }
+
+    // ---- 对话 ----
+    function clearMessages() { var m=$("#messages"); if(m) m.innerHTML=""; }
+    function scrollBottom() { var m=$("#messages"); if(m) m.scrollTop=m.scrollHeight; }
+
+    // ---- 对话记忆 ----
+    function skillName(id){for(var i=0;i<state.skills.length;i++){if(state.skills[i].id===id)return state.skills[i].name;}return "角色";}
+    function appendMsg(role, content){
+      var wrap=document.createElement("div"); wrap.className="msg "+role;
+      var who=document.createElement("span"); who.className="who";
+      who.textContent = role==="user" ? "你" : (typeof state.current==="string"?skillName(state.current):"助手");
+      var b=document.createElement("div"); b.className="body"; b.textContent=content||"";
+      wrap.appendChild(who); wrap.appendChild(b);
+      var msgs=$("#messages"); if(msgs)msgs.appendChild(wrap);
+      return wrap;
+    }
+    function renderHistory(){
+      clearMessages();
+      (state.history||[]).forEach(function(m){ appendMsg(m.role, m.content); });
+      scrollBottom();
+    }
+    async function loadHistory(id){
+      try{
+        var r=await fetch("/api/skills/"+encodeURIComponent(id)+"/history");
+        if(r.ok){var d=await r.json(); state.history=d.history||[];}
+        else state.history=[];
+      }catch(e){ state.history=[]; }
+      renderHistory();
+    }
+    async function saveHistory(id){
+      if(!id || typeof id!=="string") return;
+      try{
+        await fetch("/api/skills/"+encodeURIComponent(id)+"/history",
+          {method:"POST",headers:{"Content-Type":"application/json"},
+           body:JSON.stringify({history:state.history||[]})});
+      }catch(e){}
+    }
+
+    async function sendMessage() {
+      var input=$("#input"); if(!input)return;
+      var text=input.value.trim(); if(!text)return;
+      input.value=""; autoGrow(input);
+
+      // 用户消息
+      var wrap=document.createElement("div"); wrap.className="msg user";
+      var who=document.createElement("span"); who.className="who"; who.textContent="你";
+      var body=document.createElement("div"); body.className="body"; body.textContent=text;
+      wrap.appendChild(who); wrap.appendChild(body);
+      var msgs=$("#messages"); if(msgs)msgs.appendChild(wrap); scrollBottom();
+      state.history.push({role:"user",content:text});
+
+      // 助手消息（流式）
+      wrap=document.createElement("div"); wrap.className="msg assistant";
+      who=document.createElement("span"); who.className="who";
+      who.textContent=(typeof state.current==="string")
+        ? (function(){for(var i=0;i<state.skills.length;i++){if(state.skills[i].id===state.current)return state.skills[i].name;}return"角色";})()
+        : "助手";
+      body=document.createElement("div"); body.className="body"; body.textContent="";
+      body.classList.add("typing");
+      wrap.appendChild(who); wrap.appendChild(body);
+      if(msgs)msgs.appendChild(wrap); scrollBottom();
+
+      try {
+        var resp=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({skill:state.current,message:text,history:state.history})});
+        if(!resp.ok){var err=await resp.json().catch(function(){});body.classList.remove("typing");body.textContent="⚠️ "+(err.error||"请求失败");return;}
+        var reader=resp.body.getReader();var decoder=new TextDecoder();var buffer="",full="";
+        while(true){
+          var done_val=await reader.read(); if(done_val.done)break;
+          buffer+=decoder.decode(done_val.value,{stream:true});
+          var parts=buffer.split("\n\n");buffer=parts.pop();
+          for(var pi=0;pi<parts.length;pi++){
+            var line=parts[pi].replace(/^data: /,"").trim();
+            if(!line||line==="[DONE]")continue;
+            try{var obj=JSON.parse(line);
+              if(obj.error)full+="\n[错误]"+obj.error;
+              else if(obj.token){full+=obj.token;body.textContent=full;scrollBottom();}
+            }catch(e){}
+          }
+        }
+        body.classList.remove("typing");
+        // 前端二次清理：过滤掉可能漏网的引用标记
+        full = full.replace(/\[?(?:reference|ref|来源)?[:：]?\d+\]?|\[\d+\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+        body.textContent = full;
+        state.history.push({role:"assistant",content:full});
+        if(state.current && typeof state.current==="string") saveHistory(state.current);
+      }catch(e){body.classList.remove("typing");body.textContent="⚠️ 网络错误："+e.message;}
+    }
+
+    // ---- 新建角色 ----
+    function parseExamples(text){
+      var lines=text.split("\n").map(function(l){return l.trim();}).filter(Boolean);
+      var ex=[],cur=null;
+      for(var i=0;i<lines.length;i++){
+        if(lines[i].startsWith("user:")){cur={user:lines[i].slice(5).trim(),assistant:""};ex.push(cur);}
+        else if(lines[i].indexOf("：")>-1&&cur){cur.assistant+=lines[i].split("：").slice(1).join("：");}
+        else if(cur){cur.assistant+=lines[i];}
+      }return ex;
+    }
+    function collectForm(){
+      return{name:($("#f-name")?$("#f-name").value.trim():"")||"未命名",
+        description:($("#f-desc")?$("#f-desc").value.trim():""),
+        system_prompt:($("#f-prompt")?$("#f-prompt").value.trim():""),
+        speech_style:(($("#f-style")?$("#f-style").value:"").split("\n").map(function(s){return s.trim();}).filter(Boolean)),
+        forbidden:(($("#f-forbidden")?$("#f-forbidden").value:"").split("\n").map(function(s){return s.trim();}).filter(Boolean)),
+        examples:parseExamples($("#f-examples")?$("#f-examples").value:"")};
+    }
+    function openModal(){state.pendingAvatar=null;
+      var p=$("#f-avatar-preview");if(p){p.src="";p.style.display="none";}
+      var ph=$("#f-avatar-placeholder");if(ph)ph.style.display="";
+      var m=$("#modal");if(m)m.classList.remove("hidden");}
+    function closeModal(){var m=$("#modal");if(m)m.classList.add("hidden");}
+    async function uploadAvatar(id,file){
+      var fd=new FormData();fd.append("file",file);
+      try{return(await fetch("/api/skills/"+encodeURIComponent(id)+"/avatar",{method:"POST",body:fd})).ok;}catch(e){return false;}
+    }
+    async function saveAndUse(skill,persist){
+      if(persist){
+        var res=await fetch("/api/skills",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(skill)});
+        var data=await res.json();
+        if(state.pendingAvatar){await uploadAvatar(data.id,state.pendingAvatar);state.pendingAvatar=null;}
+        await loadSkills();activateSkill(data.id);
+      }else{
+        state.current=skill;state.history=[];
+        $("#char-name").textContent=skill.name;
+        $("#char-desc").textContent=skill.description||"已激活（未保存）";
+        if(state.pendingAvatar){var r=new FileReader();r.onload=function(){
+          var url=r.result;var ca=$("#char-avatar");if(ca){ca.src=url;ca.style.display="";}
+          var aa=$("#active-avatar");if(aa){aa.src=url;aa.style.display="";}
+        };r.readAsDataURL(state.pendingAvatar);}else{updateHeaderAvatar(null);updateActiveAvatar(null);}
+        var as=$("#active-skill");if(as){as.classList.remove("hidden");$("#active-skill-name").textContent=skill.name;}
+        clearMessages();
+      }closeModal();
+    }
+
+    // ---- 事件绑定 ----
+    function bindEvents() {
+      var sb=$("#btn-send");if(sb)sb.onclick=sendMessage;
+      var inp=$("#input");
+      if(inp){inp.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
+        inp.addEventListener("input",function(){autoGrow(inp);});}
+      var bc=$("#btn-clear");if(bc)bc.onclick=function(){state.history=[];clearMessages();if(state.current&&typeof state.current==="string")saveHistory(state.current);};
+      var bp=$("#btn-plus");if(bp)bp.onclick=function(e){e.stopPropagation();toggleMenu();};
+      document.addEventListener("click",function(e){if(!e.target.closest(".plus-wrap"))closeMenu();});
+      var bd=$("#btn-deactivate");if(bd)bd.onclick=deactivate;
+      var bn=$("#btn-new");if(bn)bn.onclick=function(){closeMenu();openModal();};
+      var bcl=$("#btn-close-modal");if(bcl)bcl.onclick=closeModal;
+      var buo=$("#btn-use-only");if(buo)buo.onclick=function(){saveAndUse(collectForm(),false);};
+      var bsu=$("#btn-save-use");if(bsu)bsu.onclick=function(){saveAndUse(collectForm(),true);};
+      var fi=$("#file-input");
+      if(fi)fi.onchange=async function(e){
+        var f=e.target.files[0];if(!f)return;
+        var fd=new FormData();fd.append("file",f);
+        var res=await fetch("/api/skills",{method:"POST",body:fd});
+        var data=await res.json();
+        var af=$("#avatar-input");if(af&&af.files[0]){await uploadAvatar(data.id,af.files[0]);af.value="";}
+        await loadSkills();activateSkill(data.id);closeMenu();e.target.value="";
+      };
+      var fai=$("#f-avatar-input");
+      if(fai)fai.onchange=function(e){
+        var f=e.target.files[0];if(!f)return;
+        state.pendingAvatar=f;var r=new FileReader();
+        r.onload=function(){var p=$("#f-avatar-preview");if(p){p.src=r.result;p.style.display="";}
+          var ph=$("#f-avatar-placeholder");if(ph)ph.style.display="none";};
+        r.readAsDataURL(f);
+      };
+      // 激活栏头像上传（点击底部角色名旁的头像区域）
+      var aai=$("#active-avatar-input");
+      if(aai)aai.onchange=async function(e){
+        var f=e.target.files[0];if(!f)return;await uploadActiveAvatar(f);e.target.value="";
+      };
+      // 聊天头部头像上传
+      var hai=$("#header-avatar-input");
+      if(hai)hai.onchange=async function(e){
+        var f=e.target.files[0];if(!f)return;await uploadActiveAvatar(f);e.target.value="";
+      };
+      log("✅ 事件绑定完成");
+    }
+
+    // ---- 启动 ----
+    async function init() {
+      log("init() 开始…");
+      try{await loadSkills();}catch(e){log("❌ loadSkills 失败: "+e.message);}
+      try{await loadHealth();}catch(e){log("❌ loadHealth 失败: "+e.message);}
+      try{bindEvents();}catch(e){log("❌ bindEvents 失败: "+e.message);}
+      // 恢复上次激活的角色及其对话记忆
+      try{
+        var last=localStorage.getItem("chatsoul_last");
+        if(last){
+          var found=false;
+          for(var i=0;i<state.skills.length;i++){if(state.skills[i].id===last){found=true;break;}}
+          if(found) await activateSkill(last);
+        }
+      }catch(e){log("⚠️ 恢复上次角色失败: "+e.message);}
+      log("🎉 初始化全部完成");
+    }
+
+    init();
+  </script>
+
+  <!-- 外部 JS 已移除：所有逻辑已内联到上方脚本中 -->
+</body>
+</html>
