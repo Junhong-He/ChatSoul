@@ -22,32 +22,6 @@ ollama pull qwen2.5:3b
 ```
 确保 Ollama 后台运行（默认 `http://localhost:11434`）。
 
-### 中国大陆加速（Ollama 海外 registry 很慢/被限速时）
-`ollama pull` 默认走海外 `registry.ollama.ai`，国内常掉到 ~100KB/s 还反复重连。
-改用「魔搭 ModelScope」下 GGUF 权重，再用 `ollama create` 注册成同名模型：
-
-```powershell
-# ① 先停掉卡住的 pull（Ctrl+C），然后装 modelscope
-cd /f/聊天机器人
-.venv\Scripts\activate
-pip install modelscope
-
-# ② 从国内 CDN 拉 Qwen2.5-3B 的 GGUF（约 2GB，国内很快）
-modelscope download --model Qwen/Qwen2.5-3B-Instruct-GGUF `
-  qwen2.5-3b-instruct-q4_k_m.gguf --local_dir ./models
-
-# ③ 注册成本地模型（名字就叫 qwen2.5:3b，server.py 无需改动）
-echo FROM F:/聊天机器人/models/qwen2.5-3b-instruct-q4_k_m.gguf > Modelfile
-echo PARAMETER num_ctx 8192 >> Modelfile
-ollama create qwen2.5:3b -f Modelfile
-
-# ④ 验证
-ollama list
-ollama run qwen2.5:3b "用一句古风中文介绍自己"
-```
-> 若 `ollama create` 报已存在，先 `ollama rm qwen2.5:3b` 再创建。
-> 量化选 `q4_k_m`（质量/体积平衡）；要更清晰用 `q5_k_m`，更省内存用 `q3_k_m` / `q2_k`。
-
 ## 2. 启动本服务
 ```bash
 pip install -r requirements.txt
