@@ -116,6 +116,23 @@ finally:
     except Exception:
         pass
 
+# ===================== 复制额外分发包文件（README / 启动器 / 安装器） =====================
+# PyInstaller 的 COLLECT 会重建 dist/ChatSoul 并清掉里面的非打包文件，
+# 所以这些"附带文件"必须在打包结束后重新拷进去，否则一重建就没了。
+DIST = HERE / "dist" / "ChatSoul"
+EXTRA_FILES = {
+    "recipient_readme.md": "README.md",   # 收件人说明书（无 emoji，含一键安装说明）
+    "install.bat": "install.bat",         # 一键安装脚本
+    "dist_start.bat": "start.bat",        # 简易启动器
+}
+for src_name, dst_name in EXTRA_FILES.items():
+    src = HERE / src_name
+    if src.exists():
+        shutil.copy2(src, DIST / dst_name)
+        print(f"  附带文件已复制: dist/ChatSoul/{dst_name}")
+    else:
+        print(f"  [提示] 未找到 {src_name}，跳过复制 {dst_name}")
+
 print("")
 print("[完成] 打包完成：dist/ChatSoul/ChatSoul.exe")
-print("        把 dist/ChatSoul 整个文件夹拷到别的电脑，双击 ChatSoul.exe 即可。")
+print("        把 dist/ChatSoul 整个文件夹拷到别的电脑，双击 install.bat 或 ChatSoul.exe 即可。")
