@@ -8,12 +8,12 @@
 > 因为格式互通，你在本地写好的 `角色.skill` 文件**既能导入 mobileLLM（Mac/iOS），也能导入本程序**。
 
 ## 特性
-- 🎭 **导入 skill 即换角色**：前端「＋」菜单里点「导入 skill 文件」上传本地 `.skill`/`.md`
-- 📜 **SKILL.md 兼容**：frontmatter（name/description/emoji）+ markdown 正文即角色设定，与 mobileLLM / AI Edge Gallery 互通
-- 🏠 **完全本地**：调用本机 Ollama，断网也能用
-- 💬 **中文语感自然**：Qwen2.5:3B 针对中文优化
-- 🧠 **8192 上下文**：记住更长角色设定与历史
-- 🌊 **流式回复** + 移动端风格的 [+] 激活菜单
+-  **导入 skill 即换角色**：前端「＋」菜单里点「导入 skill 文件」上传本地 `.skill`/`.md`
+-  **SKILL.md 兼容**：frontmatter（name/description/emoji）+ markdown 正文即角色设定，与 mobileLLM / AI Edge Gallery 互通
+-  **完全本地**：调用本机 Ollama，断网也能用
+-  **中文语感自然**：Qwen2.5:3B 针对中文优化
+-  **8192 上下文**：记住更长角色设定与历史
+-  **流式回复** + 移动端风格的 [+] 激活菜单
 
 ## 1. 安装并启动 Ollama
 ```bash
@@ -68,7 +68,7 @@ Windows 可直接双击 `start.bat`。
 ---
 name: 墨尘先生
 description: 饱读诗书的古风文人，言辞典雅
-emoji: 🧙
+emoji: 
 ---
 
 # 角色设定
