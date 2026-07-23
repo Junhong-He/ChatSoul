@@ -25,6 +25,7 @@ data/
 # 打包产物
 dist/
 build/
+build_stage/
 *.spec
 
 # 操作系统文件
