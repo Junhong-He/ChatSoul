@@ -523,6 +523,87 @@ app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    import socket
+    import threading
+    import time
+    import webbrowser
+
+    def _banner(msg=""):
+        print("=" * 56)
+        print("  ChatSoul · 本地角色扮演聊天机器人")
+        print("=" * 56)
+        if msg:
+            print(msg)
+
+    def _show_error(title, text):
+        """出错时弹窗提示，避免窗口一闪而过（Windows）。"""
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, str(text), str(title), 0x10)  # MB_ICONERROR
+        except Exception:
+            pass
+        print(f"[错误] {title}: {text}")
+
+    def _probe_server(host, port):
+        """探测指定端口是否已有 ChatSoul 服务在运行。"""
+        try:
+            with httpx.Client(timeout=2.0, trust_env=False) as c:
+                r = c.get(f"http://{host}:{port}/api/health")
+                return r.status_code == 200
+        except Exception:
+            return False
+
+    def _find_free_port(start, tries=50):
+        for p in range(start, start + tries):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(("0.0.0.0", p))
+                    return p
+                except OSError:
+                    continue
+        return start
+
+    PORT = int(os.environ.get("PORT", "8000"))
+
+    # 1) 未强制指定端口时，先看看 8000 上是不是已经有一个 ChatSoul 在跑
+    if os.environ.get("PORT") is None and _probe_server("127.0.0.1", 8000):
+        print("检测到 ChatSoul 已在运行，正在打开浏览器…")
+        try:
+            webbrowser.open_new("http://127.0.0.1:8000/")
+        except Exception:
+            pass
+        try:
+            input("按回车键关闭此窗口（不影响已运行的服务）…")
+        except Exception:
+            pass
+        sys.exit(0)
+
+    # 2) 找一个可用端口（8000 被占就顺延 8001、8002…）
+    PORT = _find_free_port(PORT)
+
+    # 3) 启动后自动在浏览器打开页面
+    def _open_browser():
+        time.sleep(1.5)
+        try:
+            webbrowser.open_new(f"http://127.0.0.1:{PORT}/")
+        except Exception:
+            pass
+
+    _banner(
+        f"服务地址： http://127.0.0.1:{PORT}/\n"
+        f"正在打开浏览器…（若未自动打开，请手动访问上面的地址）"
+    )
+
+    try:
+        import uvicorn
+        threading.Thread(target=_open_browser, daemon=True).start()
+        uvicorn.run(app, host="0.0.0.0", port=PORT)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:  # noqa: BLE001
+        _show_error("ChatSoul 启动失败", e)
+        try:
+            input("\n按回车键退出…")
+        except Exception:
+            pass
+        sys.exit(1)
