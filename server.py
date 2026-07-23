@@ -397,6 +397,37 @@ async def save_history(skill_id: str, request: Request):
     return {"ok": True, "count": len(clean)}
 
 
+@app.delete("/api/skills/{skill_id}/history")
+def delete_history(skill_id: str):
+    """彻底删除某角色的对话记忆文件（释放本地缓存）。"""
+    p = _safe_history_path(skill_id)
+    if not p:
+        return JSONResponse(status_code=400, content={"error": "非法角色名"})
+    if p.exists():
+        try:
+            p.unlink()
+        except Exception:
+            return JSONResponse(status_code=500, content={"error": "删除失败"})
+    return {"ok": True, "id": skill_id}
+
+
+@app.delete("/api/history")
+def clear_all_history():
+    """清空所有角色的对话记忆文件（释放本地缓存空间）。"""
+    removed = 0
+    try:
+        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        for f in HISTORY_DIR.glob("*.json"):
+            try:
+                f.unlink()
+                removed += 1
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return {"ok": True, "removed": removed}
+
+
 def _mock_stream(skill: dict, message: str):
     name = skill.get("name") or "角色"
     reply = (

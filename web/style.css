@@ -225,6 +225,8 @@ body {
   transition: background .25s ease, transform .2s ease;
 }
 .menu-item:hover { background: rgba(226,160,127,0.28); transform: translateY(-2px); }
+.menu-item.danger { background: rgba(201,124,105,0.14); color: #B05A45; }
+.menu-item.danger:hover { background: rgba(201,124,105,0.26); }
 
 .composer textarea {
   flex: 1; resize: none; border: 1px solid var(--brown-line);

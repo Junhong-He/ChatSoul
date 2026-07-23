@@ -102,6 +102,7 @@
                 <input type="file" id="avatar-input" accept=".png,.jpg,.jpeg,.webp,.gif" hidden />
               </label>
               <button id="btn-new" class="menu-item">新建角色 skill</button>
+              <button id="btn-clear-all" class="menu-item danger">清空所有记忆</button>
             </div>
           </div>
           <textarea id="input" placeholder="说点什么吧…（Enter 发送，Shift+Enter 换行）" rows="1"></textarea>
@@ -462,7 +463,22 @@
       var inp=$("#input");
       if(inp){inp.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
         inp.addEventListener("input",function(){autoGrow(inp);});}
-      var bc=$("#btn-clear");if(bc)bc.onclick=function(){state.history=[];clearMessages();if(state.current&&typeof state.current==="string")saveHistory(state.current);};
+      var bc=$("#btn-clear");if(bc)bc.onclick=async function(){
+        if(!state.current||typeof state.current!=="string"){state.history=[];clearMessages();return;}
+        var nm=$("#char-name").textContent||"当前角色";
+        if(!window.confirm("确定清空与「"+nm+"」的对话记忆吗？\n（仅清除此角色，其它角色不受影响）"))return;
+        state.history=[];clearMessages();
+        try{await fetch("/api/skills/"+encodeURIComponent(state.current)+"/history",{method:"DELETE"});}catch(e){}
+      };
+      var bca=$("#btn-clear-all");if(bca)bca.onclick=async function(){
+        closeMenu();
+        if(!window.confirm("确定清空【所有角色】的对话记忆吗？\n此操作不可恢复，会释放本地缓存空间。"))return;
+        try{
+          var res=await fetch("/api/history",{method:"DELETE"});
+          if(state.current&&typeof state.current==="string"){state.history=[];clearMessages();}
+          window.alert("已清空所有对话记忆 ✅");
+        }catch(e){window.alert("清空失败："+e.message);}
+      };
       var bp=$("#btn-plus");if(bp)bp.onclick=function(e){e.stopPropagation();toggleMenu();};
       document.addEventListener("click",function(e){if(!e.target.closest(".plus-wrap"))closeMenu();});
       var bd=$("#btn-deactivate");if(bd)bd.onclick=deactivate;
