@@ -1,7 +1,7 @@
-# 角色扮演聊天机器人（本地 LLM · Skill 版）
+# 角色扮演陪伴式聊天（本地 LLM · Skill 版）
 
 借鉴 [mobileLLM](https://github.com/nanguoyu/mobileLLM) 的 **Skill** 设计：每个角色是一个本地写好的 `SKILL.md` 风格文件，
-前端有「导入 skill」上传按钮，激活后由本机 **Ollama + Qwen2.5:3B** 生成回答，**不消耗任何云端 token**。
+前端有「导入 skill」上传按钮，激活后由本机 **Ollama + Qwen2.5:3B** 生成回答，**不消耗任何云端 token**,是一个不用有任何token负担的陪伴式聊天LLM，但考虑到不同计算机的显卡性能差异，为了适配更多计算机，采用了模型性能较为平凡的 Qwen2.5:3B生成回答，若想要改变模型可以选用其他更出色的模型。
 
 > mobileLLM 本身是 SwiftUI 原生 Apple App（iOS/macOS，跑 MLX/llama.cpp/Apple Intelligence），不能在 Windows 上构建。
 > 本项目沿用它的 **skill 文件格式与「对话中激活一个 skill」的交互**，落地为可跨平台运行的本地 LLM Web 应用。
