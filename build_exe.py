@@ -42,8 +42,11 @@ STAGE_SKILLS = STAGE / "skills"
 # ===================== 要排除、不打包进 exe 的角色 =====================
 # 按 skills/ 目录下的【文件名】填写（含扩展名）。
 # 例：科研导师.md = 用户说的「王老师 / 陈教授」角色，不想分发就放进来。
+#     珂莱塔.md / 珂莱塔.jpg = 可能侵权的示例角色，不上架故排除。
 EXCLUDE_SKILLS = [
     "科研导师.md",
+    "珂莱塔.md",
+    "珂莱塔.jpg",
 ]
 # 额外：读取根目录的 build_exclude.txt（每行一个文件名，# 开头为注释）
 _excl_txt = HERE / "build_exclude.txt"
