@@ -1,5 +1,5 @@
 # 角色扮演陪伴式聊天（本地 LLM · Skill 版）
-
+![image](example.png)
 借鉴 [mobileLLM](https://github.com/nanguoyu/mobileLLM) 的 **Skill** 设计：每个角色是一个本地写好的 `SKILL.md` 风格文件，
 前端有「导入 skill」上传按钮，激活后由本机 **Ollama + Qwen2.5:3B** 生成回答，**不消耗任何云端 token**,是一个不用有任何token负担的陪伴式聊天LLM，但考虑到不同计算机的显卡性能差异，为了适配更多计算机，采用了模型性能较为平凡的 Qwen2.5:3B生成回答，若想要改变模型可以选用其他更出色的模型。
 
